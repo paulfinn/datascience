@@ -301,6 +301,7 @@ BEGIN
     and p.platform_name like concat('%', p_platform, '%')
     and g.genre like concat('%', p_Genre, '%');
 END$$
+
 DELIMITER ;
 
 call title_search('call','xbox', '')

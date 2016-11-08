@@ -4,6 +4,8 @@ INSERT INTO PLATFORM (	Platform_Id, Platform_Manufacturer, Platform_Name	) Value
 INSERT INTO PLATFORM (	Platform_Id, Platform_Manufacturer, Platform_Name	) Values (	4, 'Microsoft', 'Xbox 360'	);
 INSERT INTO PLATFORM (	Platform_Id, Platform_Manufacturer, Platform_Name	) Values (	5, 'Sony', 'Playstation 3'	);
 
+
+
 INSERT INTO GENRE (	Genre, Genre_Id	) Values (	'Action', 92001	);
 INSERT INTO GENRE (	Genre, Genre_Id	) Values (	'Shooter', 92002	);
 INSERT INTO GENRE (	Genre, Genre_Id	) Values (	'Unknown', 92003	);
