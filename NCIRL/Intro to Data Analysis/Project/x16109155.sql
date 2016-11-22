@@ -25,12 +25,12 @@ drop table if exists GENRE;
 CREATE TABLE Genre
 (
   Genre_Id Int NOT NULL,
-  Genre Varchar(30) NOT NULL
+  Genre Varchar(30) NOT NULL,
+   PRIMARY KEY (Genre_Id)
 )
 ;
 
-ALTER TABLE Genre ADD  PRIMARY KEY (Genre_Id)
-;
+
 
 
 -- Table Genre_Title
@@ -38,7 +38,8 @@ drop table if exists genre_title;
 CREATE TABLE Genre_Title
 (
   Genre_Id Int NOT NULL,
-  Title_Id Int NOT NULL
+  Title_Id Int NOT NULL,
+  primary key (Genre_Id,title_id)
 )
 ;
 
@@ -89,11 +90,9 @@ CREATE TABLE Platform
 (
   Platform_Id Int NOT NULL,
   Platform_Name Varchar(50),
-  Platform_Manufacturer Varchar(50)
+  Platform_Manufacturer Varchar(50),
+  PRIMARY KEY (Platform_Id)
 )
-;
-
-ALTER TABLE Platform ADD  PRIMARY KEY (Platform_Id)
 ;
 
 
@@ -102,8 +101,10 @@ ALTER TABLE Platform ADD  PRIMARY KEY (Platform_Id)
 drop table if exists Platform_title;
 CREATE TABLE Platform_Title
 (
+  Platform_title_id int not null AUTO_INCREMENT,
   Platform_Id Int NOT NULL,
-  Title_Id Int NOT NULL
+  Title_Id Int NOT NULL,
+  primary key (Platform_Title_Id)
 )
 ;
 
@@ -113,12 +114,11 @@ drop table if exists Publisher;
 CREATE TABLE Publisher
 (
   Publisher_Id Int NOT NULL,
-  Publisher_Name Varchar(50)
+  Publisher_Name Varchar(50),
+  PRIMARY KEY (Publisher_Id)
 )
 ;
 
-ALTER TABLE Publisher ADD  PRIMARY KEY (Publisher_Id)
-;
 
 
 -- Table Rental
@@ -182,20 +182,21 @@ CREATE INDEX IX_Stock_Item_Reservation ON Reservation (Stock_Item_id)
 drop table if exists stock_item;
 CREATE TABLE Stock_Item
 (
-  Stock_Item_id Int NOT NULL,
+  Stock_Item_id Int NOT NULL auto_increment,
   Item_Stock_No Varchar(10),
   In_Stock Int NOT NULL,
   Item_Reserved_YN Varchar(1) NOT NULL,
   Shelf_Location Varchar(10) NOT NULL,
-  Title_Id Int NOT NULL
+  Platform_Title_Id Int NOT NULL,
+  Rental_Fee decimal(18,4),
+  Late_Fee decimal(18,4),
+  primary key (stock_item_id)
 )
 ;
 
-CREATE INDEX IX_Title_Stock_Item ON Stock_Item (Title_Id)
+CREATE INDEX IX_Title_Stock_Item ON Stock_Item (Platform_Title_Id)
 ;
 
-ALTER TABLE Stock_Item ADD  PRIMARY KEY (Stock_Item_id)
-;
 
 
 
@@ -301,10 +302,10 @@ BEGIN
     g.Genre, In_Stock
     from 
     title t 
-    left outer join stock_item si on t.title_id = si.Title_Id
+    left outer join platform_title pt on t.title_id = pt.title_id
+    left outer join stock_item si on pt.platform_title_id = si.platform_Title_Id
     left outer join genre_title gt on t.title_id = gt.title_id
     left outer join genre g on gt.Genre_Id = g.Genre_Id
-    left outer join platform_title pt on t.title_id = pt.title_id
     left outer join platform p on pt.Platform_Id = p.platform_id
 	left outer join publisher pub on t.publisher_id = pub.publisher_id
     where t.Game_Name like concat('%', p_Game_Name, '%') 
@@ -339,32 +340,43 @@ END$$
 DELIMITER ;
 
 
-
-drop procedure if exists rent_title;
+drop procedure if exists rent_item;
 DELIMITER $$
-create procedure rent_title (p_Stock_Item_id int, p_member_id int)
+create procedure rent_item (p_Stock_Item_id int, p_member_id int)
 BEGIN
  START TRANSACTION;
+ 
+ -- Get rental fee and late return charge from stock item
+ select rental_fee, late_fee into @rental_fee, @late_fee 
+ from stock_item where
+ stock_item_id = p_stock_item_id;
+ 
+ -- Insert Rental details
  insert into rental
- (rental_datetime, Expected_Return_Date,REntal_Fee, Member_Id, stock_item_id)
+ (rental_datetime, Expected_Return_Date,REntal_Fee, Daily_late_return_Charge, Member_Id, stock_item_id)
  values
- (now(), cast(date_add(now(), INTERVAL 3 day) as date), 5, p_Member_id, p_stock_item_id);
+ (now(), cast(date_add(now(), INTERVAL 3 day) as date), @rental_fee, @Late_Fee, p_Member_id, p_stock_item_id);
  COMMIT;
+ 
+ call customer_rental_report(p_member_id);
 END$$
 DELIMITER ;
 
 
-drop procedure if exists return_title;
+drop procedure if exists return_item;
 DELIMITER $$
-create procedure return_title(p_stock_item_id int)
+create procedure return_item(p_stock_item_id int)
 BEGIN
 
 -- Get detail of rental
-SELECT rental_id, member_id, datediff( now(), expected_return_Date), Daily_Late_Return_Charge into @rental_id, @member_id, @dayslate, @daily_charge   FROM rental r
+SELECT rental_id, member_id, datediff( now(), expected_return_Date), Daily_Late_Return_Charge into @rental_id, @member_id, @days_late, @daily_charge   FROM rental r
 where stock_item_id = p_stock_item_id and Actual_Return_Date is null;
 
+
 -- Calculate Late fee, if any & add to account
-if (@dayslate > 0) then
+if (@days_late > 0) then
+
+
 	set @late_charge = @days_late * @daily_charge;
 	insert into account_transaction (transaction_type, Transaction_Amount, Transaction_Datetime, Member_Id, rental_id)
 					values ('Late Return Charge', @late_charge , now(), @member_id, @Rental_id);
@@ -397,10 +409,10 @@ select distinct
     g.Genre, In_Stock
     from 
     title t 
-    left outer join stock_item si on t.title_id = si.Title_Id
+    left outer join platform_title pt on t.title_id = pt.title_id
+    left outer join stock_item si on pt.Platform_title_id = si.Platform_Title_Id
     left outer join genre_title gt on t.title_id = gt.title_id
     left outer join genre g on gt.Genre_Id = g.Genre_Id
-    left outer join platform_title pt on t.title_id = pt.title_id
     left outer join platform p on pt.Platform_Id = p.platform_id
 	left outer join publisher pub on t.publisher_id = pub.publisher_id
     where in_stock = 1; 
@@ -412,6 +424,8 @@ select distinct
 	r.rental_id,
     r.Rental_DateTime,
     r.Expected_Return_Date,
+    case when expected_return_date < Now() then 'Overdue' 
+    else 'Rented' end as Rental_Status,
     m.Member_Id,
     m.Member_First_Name,
     m.Member_Last_Name,
@@ -426,29 +440,48 @@ select distinct
     rental r 
     left outer join stock_item si on r.stock_item_id = si.Stock_Item_id
     left outer join member m on r.member_id = m.member_id
-    left outer join title t on t.title_id = si.Title_Id
+    left outer join platform_title pt on pt.platform_title_id = si.platform_title_id
+    left outer join title t on t.title_id = pt.Title_Id
     left outer join genre_title gt on t.title_id = gt.title_id
-    left outer join genre g on gt.Genre_Id = g.Genre_Id
-    left outer join platform_title pt on t.title_id = pt.title_id
+    left outer join genre g on gt.Genre_Id = g.Genre_Id    
     left outer join platform p on pt.Platform_Id = p.platform_id
 	left outer join publisher pub on t.publisher_id = pub.publisher_id
     where r.actual_return_date is null; 
 
 
 
+-- Calculate Unbilled Late fees
+drop function if exists get_unbilled_late_fees;
+DELIMITER $$
+create function get_unbilled_late_fees(p_member_id int)
+returns double
+BEGIN 
+
+set @unbilled_late_fees = 0;
+
+select coalesce(sum(datediff( now(), expected_return_Date) * daily_late_return_charge),0)  into @unbilled_late_fees 
+from rental
+where member_id = p_member_id
+and actual_return_date is null;
+
+
+RETURN @unbilled_late_fees;
+
+END $$
+DELIMITER ;
+
+
+
+-- Calculate Balance on a Members Account
 drop function if exists get_account_balance;
 DELIMITER $$
 create function get_account_balance(p_member_id int)
 returns double
 BEGIN 
 
-set @unbilled_late_fees = 0;
+set @unbilled_late_fees = get_unbilled_late_fees(p_member_id);
 set @account_balance = 0;
 
-select coalesce(sum(datediff( now(), expected_return_Date) * daily_late_return_charge),0)  into @unbilled_late_fees 
-from rental
-where member_id = p_member_id
-and actual_return_date is null;
 
 select sum(transaction_amount) into @account_balance from account_transaction where member_id =  p_member_id;
 
@@ -459,8 +492,46 @@ DELIMITER ;
 
 
 
+
+drop procedure if exists customer_rental_report;
+DELIMITER $$
+create procedure customer_rental_report (p_member_id int)
+BEGIN
+
+select
+Rental_id,
+case when expected_return_date < Now() then 'Overdue' 
+    else 'Rented' end as Rental_Status,
+r.Rental_Datetime,
+t.Game_Name,
+p.Platform_Name,
+r.Expected_Return_Date,
+r.Rental_Fee,
+r.Daily_Late_return_charge,
+get_account_balance(p_member_id) as Account_Balance
+
+from rental r
+inner join stock_item si on r.stock_item_id = si.stock_item_id
+inner join platform_title pt on si.Platform_Title_Id = pt.Platform_Title_id
+inner join title t on pt.title_id = t.title_id
+inner join platform p on pt.platform_id = p.platform_id 
+where r.Member_Id = p_member_id
+and r.Actual_Return_Date is null;
+
+END$$
+DELIMITER ;
+
+
+
+
 call search_title('call','xbox', '');
 call search_member('','','','');
-call rent_title( 81001382, 71001);
-call return_title (81001382);
+call rent_item( 533, 71001);
+call return_item (533);
 select get_account_balance(71001);
+call customer_rental_report(71001);
+
+select * from vw_games_on_Loan;
+
+select * from account_transaction where member_id = 71001
+
