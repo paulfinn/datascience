@@ -4,6 +4,53 @@ INSERT INTO PLATFORM (	Platform_Id, Platform_Manufacturer, Platform_Name	) Value
 INSERT INTO PLATFORM (	Platform_Id, Platform_Manufacturer, Platform_Name	) Values (	4, 'Microsoft', 'Xbox 360'	);
 INSERT INTO PLATFORM (	Platform_Id, Platform_Manufacturer, Platform_Name	) Values (	5, 'Sony', 'Playstation 3'	);
 
+Insert into Publisher (Publisher_Id, Publisher_Name)
+values (1, 'Publisher_1');
+
+
+Insert into Publisher (Publisher_Id, Publisher_Name)
+values (2, 'Publisher_2');
+
+Insert into Publisher (Publisher_Id, Publisher_Name)
+values (3, 'Publisher_3');
+
+Insert into Publisher (Publisher_Id, Publisher_Name)
+values (4, 'Publisher_4');
+
+Insert into Publisher (Publisher_Id, Publisher_Name)
+values (5, 'Publisher_5');
+
+Insert into Publisher (Publisher_Id, Publisher_Name)
+values (6, 'Publisher_6');
+
+Insert into Publisher (Publisher_Id, Publisher_Name)
+values (7, 'Publisher_7');
+
+Insert into Publisher (Publisher_Id, Publisher_Name)
+values (8, 'Publisher_8');
+
+Insert into Publisher (Publisher_Id, Publisher_Name)
+values (9, 'Publisher_9');
+
+Insert into Publisher (Publisher_Id, Publisher_Name)
+values (10, 'Publisher_10');
+
+Insert into Publisher (Publisher_Id, Publisher_Name)
+values (11, 'Publisher_11');
+
+Insert into Publisher (Publisher_Id, Publisher_Name)
+values (12, 'Publisher_12');
+
+Insert into Publisher (Publisher_Id, Publisher_Name)
+values (13, 'Publisher_13');
+
+Insert into Publisher (Publisher_Id, Publisher_Name)
+values (14, 'Publisher_14');
+
+Insert into Publisher (Publisher_Id, Publisher_Name)
+values (15, 'Publisher_15');
+
+
 
 
 INSERT INTO GENRE (	Genre, Genre_Id	) Values (	'Action', 92001	);
@@ -10651,6 +10698,9 @@ inner join platform_title pt on t.title_id = pt.title_id
 inner join platform p on pt.platform_id = p.platform_id
 set rental_fee = 7.99, Late_fee = 2.99
 where platform_name = 'Xbox One';
+
+update title
+set publisher_id = ROUND((RAND() * (15-1))+1)
 
 
 

@@ -224,7 +224,7 @@ ALTER TABLE Title ADD  PRIMARY KEY (Title_Id)
 ALTER TABLE Rental ADD CONSTRAINT Member_Rental FOREIGN KEY (Member_Id) REFERENCES Member (Member_Id) ON DELETE RESTRICT ON UPDATE RESTRICT
 ;
 
-ALTER TABLE Stock_Item ADD CONSTRAINT Title_Stock_Item FOREIGN KEY (Title_Id) REFERENCES Title (Title_Id) ON DELETE RESTRICT ON UPDATE RESTRICT
+ALTER TABLE Stock_Item ADD CONSTRAINT Platform_Title_Stock_Item FOREIGN KEY (Platform_Title_Id) REFERENCES platform_title (PLatform_Title_Id) ON DELETE RESTRICT ON UPDATE RESTRICT
 ;
 
 ALTER TABLE Rental ADD CONSTRAINT Stock_Item_Rental FOREIGN KEY (Stock_Item_id) REFERENCES Stock_Item (Stock_Item_id) ON DELETE RESTRICT ON UPDATE RESTRICT
@@ -250,6 +250,28 @@ ALTER TABLE Genre_Title ADD CONSTRAINT Relationship9_Genre FOREIGN KEY (Genre_Id
 
 ALTER TABLE Genre_Title ADD CONSTRAINT Relationship9_Title FOREIGN KEY (Title_Id) REFERENCES Title (Title_Id) ON DELETE RESTRICT ON UPDATE RESTRICT
 ;
+
+
+ALTER TABLE Rental ADD CONSTRAINT Stock_Item_rental FOREIGN KEY (Stock_item_Id) REFERENCES Stock_Item (Stock_Item_Id) ON DELETE RESTRICT ON UPDATE RESTRICT
+;
+
+ALTER TABLE Account_Transaction ADD CONSTRAINT Account_Member FOREIGN KEY (Member_Id) REFERENCES Member (Member_Id) ON DELETE RESTRICT ON UPDATE RESTRICT
+;
+
+ALTER TABLE Platform_title ADD CONSTRAINT Title_Platform_Title FOREIGN KEY (Title_Id) REFERENCES Title (Title_Id) ON DELETE RESTRICT ON UPDATE RESTRICT
+;
+
+ALTER TABLE Platform_title ADD CONSTRAINT Platform_Platform_Title FOREIGN KEY (Platform_Id) REFERENCES Platform (Platform_Id) ON DELETE RESTRICT ON UPDATE RESTRICT
+;
+
+CREATE INDEX Member_IX  ON Member (Member_First_Name, Member_Last_Name, Member_Address) ;
+CREATE INDEX Title_IX  ON Title (Game_Name);
+CREATE INDEX Rental_DateTime_ix on Rental (Rental_Datetime);
+CREATE INDEX Expected_Return_Date_ix on Rental (Expected_Return_Date);
+
+
+show tables
+
 
 
 drop trigger if exists before_member_update
@@ -450,7 +472,7 @@ select distinct
 
 
 
--- Calculate Unbilled Late fees
+-- Calculate Unbilled Late fees, use p_member_id = 0 for all members
 drop function if exists get_unbilled_late_fees;
 DELIMITER $$
 create function get_unbilled_late_fees(p_member_id int)
@@ -459,10 +481,17 @@ BEGIN
 
 set @unbilled_late_fees = 0;
 
-select coalesce(sum(datediff( now(), expected_return_Date) * daily_late_return_charge),0)  into @unbilled_late_fees 
-from rental
-where member_id = p_member_id
-and actual_return_date is null;
+if (p_member_id != 0) then
+	select coalesce(sum(datediff( now(), expected_return_Date) * daily_late_return_charge),0)  into @unbilled_late_fees 
+	from rental
+	where member_id = p_member_id
+	and actual_return_date is null;
+else
+	select coalesce(sum(datediff( now(), expected_return_Date) * daily_late_return_charge),0)  into @unbilled_late_fees 
+	from rental
+	where actual_return_date is null;
+end if;
+
 
 
 RETURN @unbilled_late_fees;
@@ -472,18 +501,22 @@ DELIMITER ;
 
 
 
--- Calculate Balance on a Members Account
+-- Calculate Balance on a Members Account, use member_id = 0 for all accounts
 drop function if exists get_account_balance;
 DELIMITER $$
-create function get_account_balance(p_member_id int)
+create function get_account_balance(p_member_id int )
 returns double
 BEGIN 
 
 set @unbilled_late_fees = get_unbilled_late_fees(p_member_id);
 set @account_balance = 0;
 
-
+if (p_member_id !=0) then	
 select sum(transaction_amount) into @account_balance from account_transaction where member_id =  p_member_id;
+else
+select sum(transaction_amount) into @account_balance from account_transaction;
+end if;
+
 
 RETURN @unbilled_late_fees + @account_balance;
 
@@ -523,15 +556,171 @@ DELIMITER ;
 
 
 
+drop procedure if exists apply_payment;
+DELIMITER $$
+create procedure apply_payment (p_Transaction_Amount decimal(18,4),
+								p_Member_id int)
 
-call search_title('call','xbox', '');
+BEGIN
+if (p_Transaction_Amount > 0) 
+		then 
+			set p_Transaction_Amount = -p_Transaction_Amount;
+END if;
+
+insert into account_transaction(Transaction_type, Transaction_amount, Transaction_DateTime, member_id)
+values ('Payment', p_Transaction_Amount, Now(), p_Member_Id);
+
+END$$
+DELIMITER ;
+
+
+drop procedure if exists revenue_report;
+DELIMITER $$
+create procedure revenue_report (p_start_Date date, 
+								p_end_date date, 
+                                p_detail_member varchar(1),
+                                p_detail_month varchar(1))
+BEGIN                                
+
+
+Select
+case when p_detail_member = 'Y' then Member_id else 'All' end as Member,
+case when p_detail_month = 'Y' then concat(monthname(transaction_datetime), ' - ', year(transaction_datetime)) else 'All' end as 'Month',
+sum(Payments) as Payments,
+Sum(Rental_Charges) as Rental_Charges,
+Sum(Late_fees) as Late_Fees,
+Sum(Payments - (REntal_Charges+Late_fees)) as Outstanding_Balance
+
+from 
+(
+	select 
+	Member_id,
+	Transaction_DateTime,
+	round(case when Transaction_Type = 'Payment' then abs(transaction_amount) else 0 end, 2) as Payments,
+	round(case when Transaction_type = 'Rental Charge' then transaction_amount else 0 end, 2) as Rental_Charges,
+	round(case when Transaction_Type = 'Late Return Charge' then transaction_amount else 0 end ,2) as Late_Fees
+	from 
+	 account_transaction 
+	 where date(transaction_datetime) >= p_start_date and date(transaction_datetime) <= p_end_date) sq
+  group by case when p_detail_member = 'Y' then Member_id else 'All' end ,
+ case when p_detail_month = 'Y' then concat(monthname(transaction_datetime), ' - ', year(transaction_datetime)) end
+ ;
+ END $$
+ DELIMITER ;
+ 
+
+
+call search_title('','', '');
+
+call search_title('Race','Playstation', '');
 call search_member('','','','');
 call rent_item( 533, 71001);
+call rent_item( 1644, 71002);
+call rent_item( 2, 71003);
+call rent_item( 213, 71004);
+call rent_item( 4558, 71005);
+call rent_item( 5228, 71006);
+call rent_item( 1904, 71007);
+call rent_item( 1644, 71008);
+call rent_item( 5040, 71009);
+call rent_item( 5611, 71010);
+call rent_item( 3605, 71011);
+call rent_item( 2717, 71012);
+
+select round(get_account_balance(0), 2);
+
+
+
+
 call return_item (533);
 select get_account_balance(71001);
 call customer_rental_report(71001);
+call apply_payment (5.93, 71001);
+call apply_payment (-3, 71001);
+call apply_payment (-0, 71001);
 
+ call revenue_report ('2016-01-01', Date(Now()) , '' , '' ); 
+
+ call revenue_report ('2016-01-01', '2016-12-31' , 'Y' , 'Y' );
+ 
+ 
+ select * from rental
+ where 
+ (actual_return_date > expected_return_Date or (expected_return_date < Now() and actual_return_Date is null))
+ and
+ 
+ ;
+ 
+
+
+
+
+
+
+-- Outputs & Reports
+-- These section provides the outputs require for Section 3
 select * from vw_games_on_Loan;
+select * from vw_games_in_stock;
 
-select * from account_transaction where member_id = 71001
+ 
+
+-- Games Release in 2014
+select
+t.Game_Name,
+t.Title_age_rating,
+t.Release_year,
+p.Platform_name,
+g.genre,
+sum(si.In_stock) as Qty_In_Stock
+
+ from 
+ title t 
+left outer join platform_title pt on pt.title_id = t.title_id
+left outer join genre_title gt on gt.title_id = t.title_id
+left outer join platform p on pt.platform_id = p.platform_id
+left outer join genre g on gt.genre_id = g.genre_id
+left outer join stock_item si on si.platform_title_id = pt.platform_title_Id
+where t.release_year = '2014'
+group by t.Game_Name,
+t.Title_age_rating,
+t.Release_year,
+p.Platform_name,
+g.genre;
+
+-- Games by Publisher and Platform
+select
+t.Game_Name,
+t.Title_age_rating,
+t.Release_year,
+pu.Publisher_name,
+p.Platform_name,
+g.genre,
+sum(si.In_stock) as Qty_In_Stock
+ from 
+ title t 
+left outer join platform_title pt on pt.title_id = t.title_id
+left outer join genre_title gt on gt.title_id = t.title_id
+left outer join platform p on pt.platform_id = p.platform_id
+left outer join genre g on gt.genre_id = g.genre_id
+left outer join stock_item si on si.platform_title_id = pt.platform_title_Id
+left outer join publisher pu on pu.publisher_id = t.publisher_id
+group by t.Game_Name,
+t.Title_age_rating,
+t.Release_year,
+p.Platform_name,
+g.genre
+order by p.platform_name desc, pu.Publisher_Name
+
+
+
+
+
+
+
+
+
+
+
+
+
 
