@@ -366,19 +366,26 @@ drop procedure if exists rent_item;
 DELIMITER $$
 create procedure rent_item (p_Stock_Item_id int, p_member_id int)
 BEGIN
- START TRANSACTION;
  
  -- Get rental fee and late return charge from stock item
- select rental_fee, late_fee into @rental_fee, @late_fee 
+ select rental_fee, late_fee, in_stock into @rental_fee, @late_fee,@in_stock 
  from stock_item where
  stock_item_id = p_stock_item_id;
  
- -- Insert Rental details
- insert into rental
- (rental_datetime, Expected_Return_Date,REntal_Fee, Daily_late_return_Charge, Member_Id, stock_item_id)
- values
- (now(), cast(date_add(now(), INTERVAL 3 day) as date), @rental_fee, @Late_Fee, p_Member_id, p_stock_item_id);
- COMMIT;
+ 
+ if @in_stock = 1 then
+	 START TRANSACTION;
+	 -- Insert Rental details
+	 insert into rental
+	 (rental_datetime, Expected_Return_Date,REntal_Fee, Daily_late_return_Charge, Member_Id, stock_item_id)
+	 values
+	 (now(), cast(date_add(now(), INTERVAL 3 day) as date), @rental_fee, @Late_Fee, p_Member_id, p_stock_item_id);
+	 COMMIT;
+else
+
+    SIGNAL SQLSTATE '45000'
+		SET MESSAGE_TEXT = 'This item cannot be rented as it is out of stock' , MYSQL_ERRNO = 1001;
+END IF;
  
  call customer_rental_report(p_member_id);
 END$$
@@ -608,6 +615,67 @@ from
  END $$
  DELIMITER ;
  
+ drop procedure if exists get_late_payment_amount;
+ 
+ DELIMITER $$
+ 
+ create procedure get_late_payment_amount(p_start_date date, p_end_date date)
+ BEGIN
+	 
+     select 
+     sum(q.Daily_Late_return_charge * q.Days_Late)
+     from
+     (select  
+	 rental_id,
+	 Daily_Late_Return_Charge,
+	 case 
+		when actual_return_Date > expected_return_date then abs(datediff(Expected_Return_Date, Actual_Return_Date))
+		when actual_return_date is null then abs(datediff(Expected_Return_Date,p_end_Date))
+		end as Days_late		
+	from rental
+	 where 
+	 -- Item is over due or was returned late
+	 (actual_return_date > expected_return_Date or (expected_return_date < Now() and actual_return_Date is null))
+	 and 
+	 -- 
+	 (Expected_Return_Date >= p_start_date and  Expected_Return_Date <= p_end_Date)) q
+	 ;
+ 
+ END$$
+ 
+DELIMITER ;
+
+drop procedure if exists list_rentals;
+
+DELIMITER $$
+
+create procedure list_rentals(p_start_date date, p_end_date date)
+BEGIN
+select
+Rental_id,
+m.Member_First_Name,
+m.Member_Last_Name,
+case when expected_return_date < Now() then 'Overdue' 
+    else 'Rented' end as Rental_Status,
+r.Rental_Datetime,
+t.Game_Name,
+p.Platform_Name,
+r.Expected_Return_Date,
+r.Rental_Fee,
+r.Daily_Late_return_charge
+from rental r
+inner join stock_item si on r.stock_item_id = si.stock_item_id
+inner join platform_title pt on si.Platform_Title_Id = pt.Platform_Title_id
+inner join title t on pt.title_id = t.title_id
+inner join platform p on pt.platform_id = p.platform_id 
+inner join member m on r.member_id = m.member_id
+where p_start_date <= Rental_Datetime and Rental_Datetime <= p_end_date;
+
+END $$
+
+DELIMITER ;
+
+ 
 
 
 call search_title('','', '');
@@ -626,6 +694,7 @@ call rent_item( 5040, 71009);
 call rent_item( 5611, 71010);
 call rent_item( 3605, 71011);
 call rent_item( 2717, 71012);
+call rent_item( 4651, 71013);
 
 select round(get_account_balance(0), 2);
 
@@ -639,21 +708,6 @@ call apply_payment (5.93, 71001);
 call apply_payment (-3, 71001);
 call apply_payment (-0, 71001);
 
- call revenue_report ('2016-01-01', Date(Now()) , '' , '' ); 
-
- call revenue_report ('2016-01-01', '2016-12-31' , 'Y' , 'Y' );
- 
- 
- select * from rental
- where 
- (actual_return_date > expected_return_Date or (expected_return_date < Now() and actual_return_Date is null))
- and
- 
- ;
- 
-
-
-
 
 
 
@@ -662,6 +716,19 @@ call apply_payment (-0, 71001);
 select * from vw_games_on_Loan;
 select * from vw_games_in_stock;
 
+-- Rental transactions per week
+call list_rentals('2016-12-05', '2016-12-11');
+call list_rentals('2016-11-21', '2016-11-27');
+
+-- YTD Sales
+ call revenue_report ('2016-01-01', Date(Now()) , '' , '' ); 
+ call revenue_report ('2016-01-01', '2016-12-31' , 'Y' , 'Y' );
+ 
+ 
+-- MOnthly Late Payments
+call get_late_payment_amount('2016-12-01', now());
+call get_late_payment_amount('2016-11-01', now());
+call get_late_payment_amount('2016-11-01', '2016-11-30');
  
 
 -- Games Release in 2014
