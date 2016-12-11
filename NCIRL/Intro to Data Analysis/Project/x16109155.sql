@@ -252,8 +252,7 @@ ALTER TABLE Genre_Title ADD CONSTRAINT Relationship9_Title FOREIGN KEY (Title_Id
 ;
 
 
-ALTER TABLE Rental ADD CONSTRAINT Stock_Item_rental FOREIGN KEY (Stock_item_Id) REFERENCES Stock_Item (Stock_Item_Id) ON DELETE RESTRICT ON UPDATE RESTRICT
-;
+
 
 ALTER TABLE Account_Transaction ADD CONSTRAINT Account_Member FOREIGN KEY (Member_Id) REFERENCES Member (Member_Id) ON DELETE RESTRICT ON UPDATE RESTRICT
 ;
@@ -697,9 +696,6 @@ call rent_item( 2717, 71012);
 call rent_item( 4651, 71013);
 
 select round(get_account_balance(0), 2);
-
-
-
 
 call return_item (533);
 select get_account_balance(71001);
