@@ -547,7 +547,7 @@ p.Platform_Name,
 r.Expected_Return_Date,
 r.Rental_Fee,
 r.Daily_Late_return_charge,
-get_account_balance(p_member_id) as Account_Balance
+round(get_account_balance(p_member_id),2) as Account_Balance
 
 from rental r
 inner join stock_item si on r.stock_item_id = si.stock_item_id
@@ -674,108 +674,58 @@ END $$
 
 DELIMITER ;
 
+
+drop view if exists	vw_rental_detail;
+create view vw_rental_detail
+as
+select  
+	r.rental_id,
+    r.Rental_DateTime,
+    r.Expected_Return_Date,
+    r.Actual_Return_Date,
+    case when expected_return_date < Now() and Actual_Return_Date is null then 'Overdue' 
+    when expected_return_date > Now() and in_Stock = 0 then 'Rented'
+    else 'Returned' end as Rental_Status,
+     r.Rental_Fee,
+    r.Daily_Late_return_charge,
+    case when Expected_Return_Date < Now() then
+		case 
+		when actual_return_Date > expected_return_date then abs(datediff(Expected_Return_Date, Actual_Return_Date))
+		when actual_return_date is null then abs(datediff(Expected_Return_Date,Now()))
+		end
+	end as Days_late,
+    case when Expected_Return_Date < Now() then
+		case 
+		when actual_return_Date > expected_return_date then abs(datediff(Expected_Return_Date, Actual_Return_Date))
+		when actual_return_date is null then abs(datediff(Expected_Return_Date,Now()))
+		end
+	end *  r.Daily_Late_return_charge as Late_Charge,
+   
+    m.Member_Id,
+    m.Member_First_Name,
+    m.Member_Last_Name,
+    si.stock_item_id, 
+    t.Game_name, 
+    t.Title_Age_Rating, 
+    t.Release_Year, 
+    pub.Publisher_Name, 
+    p.Platform_Name, 
+    g.Genre, In_Stock
+    from 
+    rental r 
+    left outer join stock_item si on r.stock_item_id = si.Stock_Item_id
+    left outer join member m on r.member_id = m.member_id
+    left outer join platform_title pt on pt.platform_title_id = si.platform_title_id
+    left outer join title t on t.title_id = pt.Title_Id
+    left outer join genre_title gt on t.title_id = gt.title_id
+    left outer join genre g on gt.Genre_Id = g.Genre_Id    
+    left outer join platform p on pt.Platform_Id = p.platform_id
+	left outer join publisher pub on t.publisher_id = pub.publisher_id
+
+
+
+
  
-
-
-call search_title('','', '');
-
-call search_title('Race','Playstation', '');
-call search_member('','','','');
-call rent_item( 533, 71001);
-call rent_item( 1644, 71002);
-call rent_item( 2, 71003);
-call rent_item( 213, 71004);
-call rent_item( 4558, 71005);
-call rent_item( 5228, 71006);
-call rent_item( 1904, 71007);
-call rent_item( 1644, 71008);
-call rent_item( 5040, 71009);
-call rent_item( 5611, 71010);
-call rent_item( 3605, 71011);
-call rent_item( 2717, 71012);
-call rent_item( 4651, 71013);
-
-select round(get_account_balance(0), 2);
-
-call return_item (533);
-select get_account_balance(71001);
-call customer_rental_report(71001);
-call apply_payment (5.93, 71001);
-call apply_payment (-3, 71001);
-call apply_payment (-0, 71001);
-
-
-
-
--- Outputs & Reports
--- These section provides the outputs require for Section 3
-select * from vw_games_on_Loan;
-select * from vw_games_in_stock;
-
--- Rental transactions per week
-call list_rentals('2016-12-05', '2016-12-11');
-call list_rentals('2016-11-21', '2016-11-27');
-
--- YTD Sales
- call revenue_report ('2016-01-01', Date(Now()) , '' , '' ); 
- call revenue_report ('2016-01-01', '2016-12-31' , 'Y' , 'Y' );
- 
- 
--- MOnthly Late Payments
-call get_late_payment_amount('2016-12-01', now());
-call get_late_payment_amount('2016-11-01', now());
-call get_late_payment_amount('2016-11-01', '2016-11-30');
- 
-
--- Games Release in 2014
-select
-t.Game_Name,
-t.Title_age_rating,
-t.Release_year,
-p.Platform_name,
-g.genre,
-sum(si.In_stock) as Qty_In_Stock
-
- from 
- title t 
-left outer join platform_title pt on pt.title_id = t.title_id
-left outer join genre_title gt on gt.title_id = t.title_id
-left outer join platform p on pt.platform_id = p.platform_id
-left outer join genre g on gt.genre_id = g.genre_id
-left outer join stock_item si on si.platform_title_id = pt.platform_title_Id
-where t.release_year = '2014'
-group by t.Game_Name,
-t.Title_age_rating,
-t.Release_year,
-p.Platform_name,
-g.genre;
-
--- Games by Publisher and Platform
-select
-t.Game_Name,
-t.Title_age_rating,
-t.Release_year,
-pu.Publisher_name,
-p.Platform_name,
-g.genre,
-sum(si.In_stock) as Qty_In_Stock
- from 
- title t 
-left outer join platform_title pt on pt.title_id = t.title_id
-left outer join genre_title gt on gt.title_id = t.title_id
-left outer join platform p on pt.platform_id = p.platform_id
-left outer join genre g on gt.genre_id = g.genre_id
-left outer join stock_item si on si.platform_title_id = pt.platform_title_Id
-left outer join publisher pu on pu.publisher_id = t.publisher_id
-group by t.Game_Name,
-t.Title_age_rating,
-t.Release_year,
-p.Platform_name,
-g.genre
-order by p.platform_name desc, pu.Publisher_Name
-
-
-
 
 
 

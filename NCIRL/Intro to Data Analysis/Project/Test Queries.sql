@@ -67,6 +67,21 @@ where stock_item_id = 533 and Actual_Return_Date is null;
    
    from stock_item_backup sib
    inner join title t on sib.Title_Id = t.Title_Id
-   inner join platform_title pt on pt.Title_Id = t.Title_Id
+   inner join platform_title pt on pt.Title_Id = t.Title_Id;
    
+   
+   
+   select  
+	 r.*,
+	 case 
+		when actual_return_Date > expected_return_date then abs(datediff(Expected_Return_Date, Actual_Return_Date))
+		when actual_return_date is null then abs(datediff(Expected_Return_Date,'2016-12-10'))
+		end as Days_late		
+	from rental r
+	 where 
+	 -- Item is over due or was returned late
+	 (actual_return_date > expected_return_Date or (expected_return_date < Now() and actual_return_Date is null))
+	 and 
+	 -- 
+	 (Expected_Return_Date >= '2016-11-01' and  Expected_Return_Date<='2016-12-10')
    
