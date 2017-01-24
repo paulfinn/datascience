@@ -1,0 +1,11 @@
+install.packages('stats')
+install.packages('ggplot2')
+install.packages('moments')
+install.packages('design')
+install.packages('datasets')
+
+library(datasets)
+library(stats)
+library(ggplot2)
+library(moments)
+data(iris)
