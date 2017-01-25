@@ -6,6 +6,16 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{DA7A21FA-8162-4350-AD77-A8D1B671F3ED}") = "Advanced Business Data Analysis Labs", "Advanced Business Data Analysis Labs.rxproj", "{C5B8103B-8453-4C16-8E74-C4C9823B165F}"
 EndProject
 Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C5B8103B-8453-4C16-8E74-C4C9823B165F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C5B8103B-8453-4C16-8E74-C4C9823B165F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C5B8103B-8453-4C16-8E74-C4C9823B165F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C5B8103B-8453-4C16-8E74-C4C9823B165F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection

@@ -1,8 +1,11 @@
-install.packages('stats')
+#Base Packages - Should not be updated
+#install.packages('stats')
+#install.packages('datasets')
+
 install.packages('ggplot2')
 install.packages('moments')
 install.packages('design')
-install.packages('datasets')
+
 
 library(datasets)
 library(stats)
