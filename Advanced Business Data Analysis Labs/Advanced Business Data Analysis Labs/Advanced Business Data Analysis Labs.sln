@@ -5,6 +5,8 @@ VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{DA7A21FA-8162-4350-AD77-A8D1B671F3ED}") = "Advanced Business Data Analysis Labs", "Advanced Business Data Analysis Labs.rxproj", "{C5B8103B-8453-4C16-8E74-C4C9823B165F}"
 EndProject
+Project("{DA7A21FA-8162-4350-AD77-A8D1B671F3ED}") = "R Analysis", "..\..\Advanced Business Data Analysis\CA1\R Analysis\R Analysis.rxproj", "{55BC4C81-A568-4777-9D92-96BAC415AEC2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{C5B8103B-8453-4C16-8E74-C4C9823B165F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C5B8103B-8453-4C16-8E74-C4C9823B165F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C5B8103B-8453-4C16-8E74-C4C9823B165F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{55BC4C81-A568-4777-9D92-96BAC415AEC2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55BC4C81-A568-4777-9D92-96BAC415AEC2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55BC4C81-A568-4777-9D92-96BAC415AEC2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55BC4C81-A568-4777-9D92-96BAC415AEC2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

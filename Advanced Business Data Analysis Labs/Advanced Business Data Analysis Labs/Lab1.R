@@ -5,7 +5,7 @@
 #
 #setwd(file.path("D:", "Google Drive", "Documents", "2015-2016 Lecture Notes", "HDSDA-BSHTM4 - Advanced Business Data Analysis", "R")) 
 
-setwd(file.path("C:", "DATASCIENCE", "Advanced Business Data Analysis Labs", "Advanced Business Data Analysis Labs"))
+setwd(file.path("C:", "DEV", "GIT Repos", "datascience", "Advanced Business Data Analysis Labs", "Advanced Business Data Analysis Labs"))
 #
 # Code to execute this script: source("BasicStatsTests.R", echo=TRUE) # path must be set above
 #
